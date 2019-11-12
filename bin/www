@@ -1,0 +1,90 @@
+#!/usr/bin/env node
+
+/**
+ * Module dependencies.
+ */
+
+var app = require('../app');
+var debug = require('debug')('launch-coming-soon-page-dev:server');
+var http = require('http');
+
+/**
+ * Get port from environment and store in Express.
+ */
+
+// Add HTTPS Section
+var fs = require('fs');
+var https = require('https');
+var http_port = 80;
+var https_port    =   process.env.PORT_HTTPS || 443;
+
+var https_options = {
+  key: fs.readFileSync("./ssl/HSSL-5dad66dd7e9ab.key"),
+  cert: fs.readFileSync("./ssl/vestor_id.crt"),
+  ca: [ fs.readFileSync('./ssl/ssl-bundle.crt') ]
+};
+
+app.set("port",https_port);
+
+/**
+ * Event listener for HTTP server "error" event.
+ */
+
+function onError(error) {
+  if (error.syscall !== 'listen') {
+    throw error;
+  }
+
+//port-https_port
+  var bind = typeof https_port === 'string'
+    ? 'Pipe ' + https_port
+    : 'Port ' + https_port;
+//port-https_port
+
+  // handle specific listen errors with friendly messages
+  switch (error.code) {
+    case 'EACCES':
+      console.error(bind + ' requires elevated privileges');
+      process.exit(1);
+      break;
+    case 'EADDRINUSE':
+      console.error(bind + ' is already in use');
+      process.exit(1);
+      break;
+    default:
+      throw error;
+  }
+}
+
+/**
+ * Event listener for HTTP server "listening" event.
+ */
+
+function onListening() {
+  var addr = server.address();
+  var bind = typeof addr === 'string'
+    ? 'pipe ' + addr
+    : 'port ' + addr.port;
+  debug('Listening on ' + bind);
+}
+
+/*
+° Create HTTPS server.
+*/
+var server = https.createServer(https_options, app);
+
+/**
+* Listen on provided port, on all network interfaces.
+*/
+
+server.listen(https_port);
+server.on('error', onError);
+server.on('listening', onListening);
+
+// Redirect from http port to https
+http.createServer(function (req, res) {
+  res.writeHead(301, { "Location": "https://" + req.headers['host'].replace(http_port,https_port) + req.url });
+  console.log("http requet, will go to >> ");
+  console.log("https://" + req.headers['host'].replace(http_port,https_port) + req.url );
+  res.end();
+}).listen(http_port);
